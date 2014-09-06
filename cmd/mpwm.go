@@ -25,15 +25,32 @@ func main() {
 		cli.StringFlag{
 			Name:  "to, t",
 			Value: "localhost:8000",
-			Usage: "The host that the proxy server should forward requests to.",
+			Usage: "The host that the proxy server" +
+				" should forward requests to.",
+		},
+		cli.IntFlag{
+			Name:  "max-connection, c",
+			Value: 25,
+			Usage: "The maximum number of active " +
+				"connection at any given time.",
+		},
+		cli.IntFlag{
+			Name:  "max-wait-connection, wc",
+			Value: 10000,
+			Usage: "The maximum number of " +
+				"connections that can be waiting to be served.",
 		},
 	}
 
 	app.Action = func(c *cli.Context) {
 		from := c.String("from")
-		fmt.Println(from)
 		to := c.String("to")
+		maxConnections := c.Int("max-connection")
+		maxWaitingConnections := c.Int("max-wait-connection")
+		fmt.Println(from)
 		fmt.Println(to)
+		fmt.Println(maxConnections)
+		fmt.Println(maxWaitingConnections)
 	}
 
 	app.Run(os.Args)
