@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -43,14 +45,31 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) {
-		from := c.String("from")
-		to := c.String("to")
+		fromHost := c.String("from")
+		toHost := c.String("to")
 		maxConnections := c.Int("max-connection")
 		maxWaitingConnections := c.Int("max-wait-connection")
-		fmt.Println(from)
-		fmt.Println(to)
+		fmt.Println(fromHost)
+		fmt.Println(toHost)
 		fmt.Println(maxConnections)
 		fmt.Println(maxWaitingConnections)
+		fmt.Printf("Proxying %s->%s.\r\n", fromHost, toHost)
+
+		// Set up our listening server
+		server, err := net.Listen("tcp", fromHost)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		// The channel of connections which are waiting to be processed.
+		waiting := make(chan net.Conn, maxWaitingConnections)
+		// The booleans representing the free active connection spaces.
+		spaces := make(chan bool, maxConnections)
+		// Initialize the spaces
+		for i := 0; i < maxConnections; i++ {
+			spaces <- true
+		}
 	}
 
 	app.Run(os.Args)
