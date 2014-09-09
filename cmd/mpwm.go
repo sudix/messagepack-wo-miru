@@ -30,12 +30,12 @@ func setFlags(app *cli.App) {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "from, f",
-			Value: "localhost:80",
+			Value: "localhost:8080",
 			Usage: "The proxy server's host.",
 		},
 		cli.StringFlag{
 			Name:  "to, t",
-			Value: "localhost:8000",
+			Value: "localhost:8090",
 			Usage: "The host that the proxy server" +
 				" should forward requests to.",
 		},
@@ -88,14 +88,15 @@ func handleConnection(connection net.Conn) {
 	complete := make(chan bool, 2)
 	ch1 := make(chan bool, 1)
 	ch2 := make(chan bool, 1)
-	go copyContent(connection, remote, complete, ch1, ch2)
-	go copyContent(remote, connection, complete, ch2, ch1)
+	go copyContent("---->", connection, remote, complete, ch1, ch2)
+	go copyContent("<----", remote, connection, complete, ch2, ch1)
 	// Block until we've completed both goroutines!'
 	<-complete
 	<-complete
 }
 
-func copyContent(from, to net.Conn, complete, done, otherDone chan bool) {
+func copyContent(dest string, from, to net.Conn, complete, done, otherDone chan bool) {
+	fmt.Println(dest)
 	var err error = nil
 	var bytes []byte = make([]byte, 256)
 	var read int = 0
@@ -110,6 +111,7 @@ func copyContent(from, to net.Conn, complete, done, otherDone chan bool) {
 			// Read data from the source connection.
 			from.SetReadDeadline(time.Now().Add(time.Second * 5))
 			read, err = from.Read(bytes)
+			fmt.Printf("%s", bytes)
 			// If any errors occured, write to complete as we are done
 			// (one of the connections closed).
 			if err != nil {
