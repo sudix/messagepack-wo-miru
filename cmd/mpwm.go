@@ -144,10 +144,6 @@ func main() {
 		toHost = c.String("to")
 		maxConnections = c.Int("max-connection")
 		maxWaitingConnections = c.Int("max-wait-connection")
-		fmt.Println(fromHost)
-		fmt.Println(toHost)
-		fmt.Println(maxConnections)
-		fmt.Println(maxWaitingConnections)
 		fmt.Printf("Proxying %s->%s.\r\n", fromHost, toHost)
 
 		// Set up our listening server
