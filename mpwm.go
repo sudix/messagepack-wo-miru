@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -17,14 +15,13 @@ import (
 )
 
 var (
-	proxy        *goproxy.ProxyHttpServer
 	targetDomain string
 	verbose      bool
 )
 
 func setAppInfo(app *cli.App) {
 	app.Name = "mpwm - messagepack viewer"
-	app.Usage = "show message pack valuew from file or http proxy"
+	app.Usage = "show message pack values from file or http proxy"
 	app.Version = "0.0.1"
 }
 
@@ -67,7 +64,6 @@ func msgPackToJson(b []byte) (string, error) {
 	}
 
 	jsonString := fmt.Sprintf("%s", j)
-
 	return jsonString, nil
 
 }
@@ -78,61 +74,33 @@ func orPanic(err error) {
 	}
 }
 
-func onRequest() {
-	proxy.OnRequest().
-		HijackConnect(func(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
-		defer func() {
-			if e := recover(); e != nil {
-				ctx.Logf("error connecting to remote: %v", e)
-				client.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
+func onRequest(proxy *goproxy.ProxyHttpServer) {
+	proxy.OnRequest(goproxy.DstHostIs(targetDomain)).DoFunc(
+		func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+			fmt.Println("======[ out ]======>")
+			fmt.Println("---[ cookie ]--->")
+			for _, c := range req.Cookies() {
+				fmt.Printf("%#v\n", c)
 			}
-			client.Close()
-		}()
-		fmt.Println("&&&&&&&&")
-		clientBuf := bufio.NewReadWriter(bufio.NewReader(client), bufio.NewWriter(client))
-		remote, err := net.Dial("tcp", req.URL.Host)
-		orPanic(err)
-		remoteBuf := bufio.NewReadWriter(bufio.NewReader(remote), bufio.NewWriter(remote))
-		for {
-			req, err := http.ReadRequest(clientBuf.Reader)
-			orPanic(err)
-			orPanic(req.Write(remoteBuf))
-			orPanic(remoteBuf.Flush())
-			resp, err := http.ReadResponse(remoteBuf.Reader, req)
-			orPanic(err)
-			orPanic(resp.Write(clientBuf.Writer))
-			orPanic(clientBuf.Flush())
-		}
-		fmt.Printf("%s\n", remoteBuf)
-		fmt.Printf("%s\n", clientBuf)
-	})
-
-	// proxy.OnRequest(goproxy.DstHostIs(targetDomain)).DoFunc(
-	// 	func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-	// 		fmt.Println("======[ out ]======>")
-	// 		fmt.Println("---[ cookie ]--->")
-	// 		for _, c := range req.Cookies() {
-	// 			fmt.Printf("%#v\n", c)
-	// 		}
-	// 		fmt.Println("---[ body ]--->")
-	// 		body, err := ioutil.ReadAll(req.Body)
-	// 		if err != nil {
-	// 			fmt.Println("############")
-	// 			fmt.Println(err)
-	// 			return req, nil
-	// 		}
-	// 		json, err := msgPackToJson(body)
-	// 		if err != nil {
-	// 			fmt.Println("$$$$$$$$$$$$")
-	// 			fmt.Println(err)
-	// 			return req, nil
-	// 		}
-	// 		fmt.Println(json)
-	// 		return req, nil
-	// 	})
+			fmt.Println("---[ body ]--->")
+			body, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				fmt.Println("############")
+				fmt.Println(err)
+				return req, nil
+			}
+			json, err := msgPackToJson(body)
+			if err != nil {
+				fmt.Println("$$$$$$$$$$$$")
+				fmt.Println(err)
+				return req, nil
+			}
+			fmt.Println(json)
+			return req, nil
+		})
 }
 
-func onResponse() {
+func onResponse(proxy *goproxy.ProxyHttpServer) {
 	proxy.OnResponse(goproxy.DstHostIs(targetDomain)).DoFunc(
 		func(res *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 			fmt.Println("<=====[ in ]=======")
@@ -158,21 +126,22 @@ func onResponse() {
 		})
 }
 
+func buildProxy() (proxy *goproxy.ProxyHttpServer) {
+	proxy = goproxy.NewProxyHttpServer()
+	proxy.Verbose = verbose
+	onRequest(proxy)
+	onResponse(proxy)
+	return
+}
+
 func main() {
 	app := cli.NewApp()
 	setAppInfo(app)
 	setFlags(app)
-
 	app.Action = func(c *cli.Context) {
 		targetDomain = c.String("target-domain")
 		verbose = c.Bool("verbose")
-
-		proxy = goproxy.NewProxyHttpServer()
-		proxy.Verbose = verbose
-
-		onRequest()
-		onResponse()
-
+		proxy := buildProxy()
 		log.Fatal(http.ListenAndServe(":8080", proxy))
 	}
 	fmt.Println("proxy start.")

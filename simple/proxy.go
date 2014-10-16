@@ -100,7 +100,7 @@ func splitEachSection(dump []byte) (header, body []byte, err error) {
 }
 
 func outputBody(body []byte, direction Direction) error {
-	color := "white"
+	var color string
 	if direction == Request {
 		color = "cyan"
 		fmt.Println(ansi.Color("====[request]====>", color))
