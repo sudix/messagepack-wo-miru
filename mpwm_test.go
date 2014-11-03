@@ -12,14 +12,24 @@ import (
 
 func TestMpmProxy(t *testing.T) {
 	fmt.Println("aaa")
+
+	// start proxy server
 	client, _, s := oneShotProxy()
 	defer s.Close()
-	res, err := client.Get("http://google.com/")
+	fmt.Println(s.URL)
+
+	// start test response server
+	ts := httptest.NewServer(http.HandlerFunc(dummResponseHandler))
+	defer ts.Close()
+	fmt.Println(ts.URL)
+
+	res, err := client.Get(ts.URL)
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Sprintf("%#v¥n", res)
+	res.Body.Close()
 
+	fmt.Sprintf("%#v¥n", res.Body)
 }
 
 func oneShotProxy() (client *http.Client, proxy *goproxy.ProxyHttpServer, s *httptest.Server) {
@@ -29,4 +39,8 @@ func oneShotProxy() (client *http.Client, proxy *goproxy.ProxyHttpServer, s *htt
 	tr := &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
 	client = &http.Client{Transport: tr}
 	return
+}
+
+func dummResponseHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello world")
 }
