@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	listen = flag.String("listen", "localhost:1080", "listen on address")
+	listen = flag.String("listen", ":8080", "listen on address")
 	logp   = flag.Bool("log", false, "enable logging")
 )
 
@@ -42,6 +42,8 @@ func main() {
 }
 
 func proxyHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.URL.Scheme)
+	fmt.Println(r.URL)
 	// Log if requested
 	if *logp {
 		log.Println(r.URL)

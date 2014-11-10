@@ -75,28 +75,24 @@ func msgPackToJson(b []byte) (string, error) {
 
 }
 
-func orPanic(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func onRequest(proxy *goproxy.ProxyHttpServer) {
 	// proxy.OnRequest(goproxy.DstHostIs(targetHost)).DoFunc(
 	proxy.OnRequest().DoFunc(
 		func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 			fmt.Println(req.URL)
-			fmt.Println("======[ out ]======>")
-			fmt.Println("---[ body ]--->")
+			fmt.Println("------[ request ]------>")
+			// fmt.Println("---[ body ]--->")
 			fmt.Println(req.URL.Host)
 			dump, err := httputil.DumpRequest(req, true)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
+				return req, nil
 			}
 
 			_, body, err := splitEachSection(dump)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
+				return req, nil
 			}
 
 			json, err := msgPackToJson(body)
@@ -113,17 +109,20 @@ func onResponse(proxy *goproxy.ProxyHttpServer) {
 	// proxy.OnResponse(goproxy.DstHostIs(targetHost)).DoFunc(
 	proxy.OnResponse().DoFunc(
 		func(res *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-			fmt.Println("<=====[ in ]=======")
+			fmt.Println("<=====[ response ]=======")
 			fmt.Println("<---[ body ]---")
 
 			dump, err := httputil.DumpResponse(res, true)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
+				return res
+
 			}
 
 			_, body, err := splitEachSection(dump)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
+				return res
 			}
 
 			json, err := msgPackToJson(body)
